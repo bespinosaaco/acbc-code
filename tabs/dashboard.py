@@ -4,23 +4,87 @@ import pandas as pd
 import io
 from requests.auth import HTTPBasicAuth
 import plotly.graph_objects as go
+import xml.etree.ElementTree as ET
 
 NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
 USERNAME = st.secrets["nextcloud"]["username"]
 PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
 
+### Function to get the master inventory spreadsheet
 @st.cache_data
-def get_csv_file_as_dataframe(file_path):
+def get_csv_file_as_dataframe(file_path,header=0):
     url = f"{NEXTCLOUD_URL}{file_path}"
     try:
         response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
         if response.status_code == 200:
             csv_content = response.content.decode('utf-8')
-            df = pd.read_csv(io.StringIO(csv_content))
+            df = pd.read_csv(io.StringIO(csv_content),header=header)
             return df
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to Load the master: {e}")
         return []
+
+### Function to list files in the specified folder on NextCloud
+@st.cache_data
+def list_nextcloud_folder_files(folder_path="/specific-folder"):
+    url = f"{NEXTCLOUD_URL}{folder_path}/"
+    try:
+        response = requests.request("PROPFIND", url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+        response.raise_for_status()  # Raise an error for bad responses
+        file_list = []
+        if response.status_code == 207:
+            # Parse XML response to get file and folder names
+            root = ET.fromstring(response.text)
+            namespace = {'d': 'DAV:'}
+
+            for response in root.findall("d:response", namespace):
+                href = response.find("d:href", namespace).text
+                if href.endswith('/'):
+                    folder_name = href.split('/')[-2]
+                    if folder_name != folder_path.strip('/'):
+                        file_list.append(folder_name)
+                else:
+                    file_name = href.split('/')[-1]
+                    file_list.append(file_name)
+        return file_list
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to list files: {e}")
+        return []
+
+### Function to plot 2D spectrums
+def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title="Y Axis"):
+    """
+    Create a simple line chart using Plotly.
+
+    Parameters:
+    - data (df): dataframe with the data
+    - title (str): The title of the chart.
+    - xaxis_title (str): The label for the x-axis.
+    - yaxis_title (str): The label for the y-axis.
+
+    Returns:
+    - go.Figure: A Plotly figure object representing the line chart.
+    """
+    fig = go.Figure(data=go.Scatter(
+        x=data.iloc[:,0],
+        y=data.iloc[:,1],
+        mode='lines',
+        name='line',
+        line=dict(color='blue', width=2)
+    ))
+
+    # Update layout for better visualization
+    fig.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        autosize=False,
+        width=800,
+        height=500,
+        margin=dict(l=50, r=50, b=100, t=100, pad=4)
+    )
+
+    return fig
 
 ###### The Dashboard begins here #######
 
@@ -33,6 +97,7 @@ with st.spinner('Connecting to Brian NextCloud...'):
         master = st.session_state['master']
     else:
         master = get_csv_file_as_dataframe("/master.csv")
+        master.dropna(axis=0,how='all',inplace=True)
         st.session_state['master'] = master
 
     col_reload = st.columns([1, 0.1])
@@ -56,7 +121,6 @@ with st.spinner('Connecting to Brian NextCloud...'):
     st.dataframe(master,use_container_width=True)
 
 ### Pulling Data from the inventory
-
 with st.form("pull_data"):
     st.write('''
         ### Visualize information from the selected samples 👇 
@@ -183,3 +247,31 @@ with st.container(border=False):
 
         # 3D scatter plot
         st.plotly_chart(fig, use_container_width=True)
+
+### Instrument Data Viz
+st.write('''
+    ---
+    ### Visualize instrument data  👇 
+    ''')
+with st.container(border=False):
+    data_file_sel = None
+    inst_col1,inst_col2 = st.columns(2)
+    with inst_col1:
+        instrument_sel = st.selectbox(label= 'Select the instrument to display data',
+                                  options=["IR","TGA","RAMAN","XRD"], placeholder="Instrument")
+    with inst_col2:
+        if instrument_sel:
+            istrmt_file_list = list_nextcloud_folder_files(f"/{instrument_sel}")
+            data_file_sel = st.selectbox(label=f"List of available {instrument_sel}", options=istrmt_file_list)
+
+    if st.button("Viz Spectrum"):
+        viz_file_col1,viz_file_col2 = st.columns([1,3])
+        if data_file_sel is not None:
+            file_df = get_csv_file_as_dataframe(f"/{instrument_sel}/{data_file_sel}",header=None)
+            file_df.columns = ["X","Y"]
+            viz_file_col1.dataframe(file_df)
+            viz_file_col2.plotly_chart(plot_line_chart(file_df,data_file_sel[:-4],'Wavenumber',"Transmission"),use_container_width=True)
+        else:
+            st.warning("No data to pull")
+
+
