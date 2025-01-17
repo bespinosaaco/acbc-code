@@ -10,6 +10,8 @@ NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
 USERNAME = st.secrets["nextcloud"]["username"]
 PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
 
+###### Function section begins here #######
+
 ### Function to get the master inventory spreadsheet
 @st.cache_data
 def get_csv_file_as_dataframe(file_path,header=0):
