@@ -1,6 +1,18 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
+import requests
+from requests.auth import HTTPBasicAuth
+import io
+
+NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
+USERNAME = st.secrets["nextcloud"]["username"]
+PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
+time = datetime.today().strftime('%Y-%m-%d %H-%M')
+newsample_url = f"{NEXTCLOUD_URL}/NEWSAMPLES"
+
+### THE PAGE BEGINS HERE ###
+st.write(time)
 
 st.warning("Page under work ⚒️!")
 st.caption("Add your sample information dynamically")
@@ -46,8 +58,25 @@ st.session_state.new_data_df2 = st.data_editor(new_data_df,num_rows='dynamic',hi
 with st.form("new_data"):
     st.write("Inspect the dataframe")
     st.write(st.session_state.new_data_df2)
+    researcher = st.text_input("Insert your name", None)
     submitted = st.form_submit_button("Submit for review")
     if submitted:
-        st.success("Submitted for review")
+        if researcher is not None and not st.session_state.new_data_df2.empty:
+            # Convert DataFrame to CSV in memory
+            csv_buffer = io.StringIO()
+            st.session_state.new_data_df2.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue()
+            upload_url = f'{newsample_url}/{researcher}-{time}.csv'
+            response = requests.put(
+                upload_url,
+                data=csv_data,
+                auth=HTTPBasicAuth(USERNAME, PASSWORD)
+            )
 
-st.write(datetime.today().strftime('%Y-%m-%d'))
+            # Check if the upload was successful
+            if response.status_code == 201:
+                st.success("Submitted for review")
+            else:
+                st.error(f"Failed to upload file. Status code: {response.status_code}")
+        else:
+            st.error("The new sample dataframe is empty or no name set")
