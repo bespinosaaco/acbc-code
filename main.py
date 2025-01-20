@@ -39,7 +39,7 @@ pages = {
     ],
     "About": [
         st.Page("tabs/docs.py", title="Info"),
-    ],
+    ]
 }
 
 pg = st.navigation(pages)

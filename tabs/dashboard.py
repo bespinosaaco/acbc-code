@@ -200,13 +200,13 @@ with st.container(border=False):
     ### Adsorption vs SSA vs $(O+N)/C$  
     ''')
 
-    ad_df = master.loc[:,['LongName','Capacity(mg/g)','BET(m2/g)']]
+    ad_df = master.loc[:,['SampleCode','LongName','Capacity(mg/g)','BET(m2/g)']]
     ad_df['(O+N)/C'] = ((master['%O']+master['%N'])/master['%C'])
     ad_df.dropna(axis=0,how='any',inplace=True)
 
-    labels = [(f"{master.loc[i,'SampleCode']}: ({ad_df['Capacity(mg/g)'].iloc[i]:.2f},"
-               f" {ad_df['BET(m2/g)'].iloc[i]:.2f},"
-               f" {ad_df['(O+N)/C'].iloc[i]:.2f})") for i in range(len(ad_df))]
+    labels = [(f"{ad_df.iloc[i,0]}: ({ad_df['Capacity(mg/g)'].iloc[i]:.2f},"
+               f"{ad_df['BET(m2/g)'].iloc[i]:.2f},"
+               f"{ad_df['(O+N)/C'].iloc[i]:.2f})") for i in range(len(ad_df))]
     ads_col1,ads_col2 =st.columns((1,2))
     with ads_col1:
         st.dataframe(ad_df)
