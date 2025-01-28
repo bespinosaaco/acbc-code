@@ -131,11 +131,11 @@ with st.form("pull_data"):
     par1, par2 = st.columns((1, 1))
     ### Sample and param
     with par1:
-        choice = st.multiselect('Select sample(s)', options=master['SampleCode'], placeholder='SampleCode',
+        choice = st.multiselect('Select sample(s)', options=master['ShortName'], placeholder='ShortName',
                                 help='Select the samples you wish to compare')
     with par2:
-        param = st.selectbox('Parameter', options=['Capacity(mg/g)', 'BET(m2/g)', 'pH', 'Yield (%)', 'PoreSize(units)',
-                                                   'PoreVolume(units)', 'Density ', 'Hydrophobicity '],
+        param = st.selectbox('Parameter', options=['Capacity(mmol/g)', 'BET(m2/g)', 'pH', 'Yield (%)', 'PoreSize(nm)',
+                                                   'PoreVolume(cm3/g)', 'Density ', 'Hydrophobicity '],
                              help='Select one of the parameters',
                              placeholder='Parameter')
     submitted =st.form_submit_button("Visualize")
@@ -146,7 +146,7 @@ with st.form("pull_data"):
 
         ### Selected samples sortable dataframe
         with col1:
-            st.dataframe(master[['SampleCode','LongName', param]][master['SampleCode'].isin(choice)],
+            st.dataframe(master[['ShortName','LongName', param]][master['ShortName'].isin(choice)],
                          use_container_width=True)
         ### Selected parameter description
         with col2:
@@ -160,7 +160,7 @@ with st.form("pull_data"):
         ### The sample by selected parameter bar graph
         with col3:
             fig = go.Figure(data=[
-                go.Bar(name='Sample Data', x=choice, y=master[param][master['SampleCode'].isin(choice)])
+                go.Bar(name='Sample Data', x=choice, y=master[param][master['ShortName'].isin(choice)])
             ])
 
             fig.update_layout(
@@ -172,12 +172,12 @@ with st.form("pull_data"):
             st.plotly_chart(fig, use_container_width=True)
         ### The samples elemental analysis stacked bar graph
         with col4:
-            df = master[['SampleCode', '%C', '%H', '%N', '%O']][master['SampleCode'].isin(choice)]
+            df = master[['ShortName', '%C', '%H', '%N', '%O']][master['ShortName'].isin(choice)]
             fig = go.Figure()
 
             for element in ['%C', '%H', '%N', '%O']:
                 fig.add_trace(go.Bar(
-                    x=df['SampleCode'],
+                    x=df['ShortName'],
                     y=df[element],
                     name=element,
                     text=df[element].apply(lambda x: f'{x:.2f}%'),
@@ -200,11 +200,11 @@ with st.container(border=False):
     ### Adsorption vs SSA vs $(O+N)/C$  
     ''')
 
-    ad_df = master.loc[:,['SampleCode','LongName','Capacity(mg/g)','BET(m2/g)']]
+    ad_df = master.loc[:,['ShortName','LongName','Capacity(mmol/g)','BET(m2/g)']]
     ad_df['(O+N)/C'] = ((master['%O']+master['%N'])/master['%C'])
-    ad_df.dropna(axis=0,how='any',inplace=True)
+    ad_df.dropna(axis=0,subset=['Capacity(mmol/g)'],inplace=True)
 
-    labels = [(f"{ad_df.iloc[i,0]}: ({ad_df['Capacity(mg/g)'].iloc[i]:.2f},"
+    labels = [(f"{ad_df.iloc[i,0]}: ({ad_df['Capacity(mmol/g)'].iloc[i]:.2f},"
                f"{ad_df['BET(m2/g)'].iloc[i]:.2f},"
                f"{ad_df['(O+N)/C'].iloc[i]:.2f})") for i in range(len(ad_df))]
     ads_col1,ads_col2 =st.columns((1,2))
@@ -214,11 +214,11 @@ with st.container(border=False):
         fig = go.Figure(data=[go.Scatter3d(
             x=ad_df['(O+N)/C'],
             y=ad_df['BET(m2/g)'],
-            z=ad_df['Capacity(mg/g)'],
+            z=ad_df['Capacity(mmol/g)'],
             mode='markers',
             marker=dict(
                 size=5,
-                color=ad_df['Capacity(mg/g)'],  # Color by z values
+                color=ad_df['Capacity(mmol/g)'],  # Color by z values
                 colorscale='Viridis',
                 opacity=0.8),
             text=labels,  # Add labels for hover

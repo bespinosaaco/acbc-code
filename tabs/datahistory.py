@@ -10,34 +10,8 @@ USERNAME = st.secrets['GitHub']['username']
 REPO_NAME = st.secrets['GitHub']['repo']
 FILE_PATH_ON_GITHUB = 'datalog/master.csv'
 date = datetime.today().strftime('%Y-%m-%d')
-st.write(date)
 
 # GitHub operations
-def upload_to_github(df, file_path_on_github,name,note,date):
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_user(USERNAME).get_repo(REPO_NAME)
-
-    # Convert DataFrame to CSV string
-    content = df.to_csv(index=False)  # index=False to exclude row indices in CSV
-
-    # Check if file exists, if not, create it
-    try:
-        contents = repo.get_contents(file_path_on_github)
-        repo.update_file(
-            path=file_path_on_github,
-            message=f"{name} Updated CSV file on {date}. Note: {note}",
-            content=content,
-            sha=contents.sha
-        )
-    except:
-        repo.create_file(
-            path=file_path_on_github,
-            message=f"{name} Updated CSV file on {date}. Note: {note}",
-            content=content
-        )
-    st.success('Added to repository')
-
-
 def upload_to_github1(df, file_path_on_github, name, note, date):
     g = Github(GITHUB_TOKEN)
     repo = g.get_user(USERNAME).get_repo(REPO_NAME)
@@ -78,6 +52,12 @@ def upload_to_github1(df, file_path_on_github, name, note, date):
             st.error(f"An error occurred while checking or updating the file: {e}")
 
 ### Page starts here ###
+st.write(date)
+
+st.write('''
+        # Version control 😶‍🌫️ 
+        Submit current inventory to version control
+''')
 
 if 'master' in st.session_state:
     st.write(st.session_state['master'])

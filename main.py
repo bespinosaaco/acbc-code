@@ -37,11 +37,11 @@ pages = {
         st.Page("tabs/dashboard.py", title="Dashboard"),
         st.Page("tabs/dataedit.py", title="Data Edit"),
     ],
-    "About": [
-        st.Page("tabs/docs.py", title="Info"),
-    ],
     "Data History" : [
         st.Page("tabs/datahistory.py", title="Update"),
+    ],
+    "About": [
+        st.Page("tabs/docs.py", title="Info"),
     ],
 }
 
