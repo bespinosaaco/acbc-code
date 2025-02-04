@@ -52,26 +52,34 @@ def upload_to_github1(df, file_path_on_github, name, note, date):
             st.error(f"An error occurred while checking or updating the file: {e}")
 
 ### Page starts here ###
-st.write(date)
+with st.popover("Log In"):
+    st.markdown("Administrative credentials")
+    name = st.text_input("What's your name?",placeholder='John')
 
-st.write('''
-        # Version control 😶‍🌫️ 
-        Submit current inventory to version control
-''')
+if name in ['Brian','Kris','Jack']:
 
-if 'master' in st.session_state:
-    st.write(st.session_state['master'])
+    st.write(date)
+
+    st.write('''
+            # Version control 😶‍🌫️ 
+            Submit current inventory to version control
+    ''')
+
+    if 'master' in st.session_state:
+        st.write(st.session_state['master'])
+    else:
+        st.error('Master not loaded')
+
+    with st.form('datalog'):
+        name = st.text_input('Name', max_chars=10)
+        note = st.text_area("Add a note for the log history", value='None', max_chars=140)
+        submitted = st.form_submit_button('Submit to version control')
+
+        if submitted:
+            if name and 'master' in st.session_state:
+                upload_to_github1(st.session_state['master'], FILE_PATH_ON_GITHUB,name,note,date)
+
+            else:
+                st.error('Add your name')
 else:
-    st.error('Master not loaded')
-
-with st.form('datalog'):
-    name = st.text_input('Name', max_chars=10)
-    note = st.text_area("Add a note for the log history", value='None', max_chars=140)
-    submitted = st.form_submit_button('Submit to version control')
-
-    if submitted:
-        if name and 'master' in st.session_state:
-            upload_to_github1(st.session_state['master'], FILE_PATH_ON_GITHUB,name,note,date)
-
-        else:
-            st.error('Add your name')
+    st.warning("Get access")

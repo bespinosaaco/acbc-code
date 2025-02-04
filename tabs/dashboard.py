@@ -102,12 +102,19 @@ with st.spinner('Connecting to Brian NextCloud...'):
         master.dropna(axis=0,how='all',inplace=True)
         st.session_state['master'] = master
 
+    if 'UCD_Database' in st.session_state:
+        UCD_Database = st.session_state['UCD_Database']
+    else:
+        UCD_Database = get_csv_file_as_dataframe("/UC_Davis_Biochar_Database.csv")
+        UCD_Database.dropna(axis=0,how='all',inplace=True)
+        st.session_state['UCD_Database'] = UCD_Database
+
     col_reload = st.columns([1, 0.1])
     with col_reload[0]:
         st.write('Connected to Brian NextCloud')
     with col_reload[1]:
         with st.spinner('Reloading'):
-            if st.button('🔄️'):
+            if st.button('🔄️',key='file_refresh'):
                 get_csv_file_as_dataframe.clear()
                 master = get_csv_file_as_dataframe("/master.csv")
                 st.session_state['master'] = master
@@ -121,6 +128,11 @@ with st.spinner('Connecting to Brian NextCloud...'):
     ''')
     st.caption('This is the Biochar Inventory. You can sort, search, expand and download')
     st.dataframe(master,use_container_width=True)
+
+    with st.expander("See the UC Davis Database"):
+        st.write("Visit UC Davis Database 👇")
+        st.link_button("UC Davis Database", "https://biochar.ucdavis.edu/")
+        st.dataframe(UCD_Database)
 
 ### Pulling Data from the inventory
 with st.form("pull_data"):
@@ -257,7 +269,7 @@ st.write('''
     ''')
 with st.container(border=False):
     data_file_sel = None
-    inst_col1,inst_col2 = st.columns(2)
+    inst_col1,inst_col2,inst_col3 = st.columns((1,1,0.1),vertical_alignment='bottom')
     with inst_col1:
         instrument_sel = st.selectbox(label= 'Select the instrument to display data',
                                   options=["IR","TGA","RAMAN","XRD"], placeholder="Instrument")
@@ -265,6 +277,11 @@ with st.container(border=False):
         if instrument_sel:
             istrmt_file_list = list_nextcloud_folder_files(f"/{instrument_sel}")
             data_file_sel = st.selectbox(label=f"List of available {instrument_sel}", options=istrmt_file_list)
+    with inst_col3:
+        st.caption('Refresh')
+        with st.spinner('Reloading'):
+            if st.button('🔄️',key='filelist_refresh',type= 'secondary',use_container_width=True):
+                list_nextcloud_folder_files.clear()
 
     if st.button("Viz Spectrum"):
         viz_file_col1,viz_file_col2 = st.columns([1,3])

@@ -133,3 +133,15 @@ with col2:
             </button>
         </a>
     """, unsafe_allow_html=True)
+
+st.write('')
+st.write('')
+
+st.header("Learn About Biochars",divider='green')
+
+url3 = 'https://biochar-international.org/'
+url4 = 'https://biochar.ucdavis.edu/'
+url5 = 'https://biochar-us.org/index.php/'
+
+for i in [url3,url4,url5]:
+    st.write(f'''* {i}''')
