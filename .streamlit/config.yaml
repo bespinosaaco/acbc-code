@@ -1,0 +1,22 @@
+cookie:
+  expiry_days: 1
+  key: some_signature_key
+  name: some_cookie_name
+credentials:
+  usernames:
+    bespinosaaco:
+      email: bespinosaaco@mun.ca
+      failed_login_attempts: 0
+      first_name: Brian
+      last_name: Espinosa
+      logged_in: true
+      password: $2b$12$hpS/0slaI6IEkjyCZfzQDe9E9F1w7f5MLQfw8.orD8beKoGpY4Ooe
+      password_hint: yolo
+      roles:
+      - Administrator
+pre-authorized:
+  emails: null
+pre-authorized2:
+  emails:
+  - bespinosaaco@mun.ca
+  - ajtaj@mun.ca

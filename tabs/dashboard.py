@@ -91,7 +91,9 @@ def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title=
 ###### The Dashboard begins here #######
 
 st.title("AC/BC Visualization 🦦")
+st.header(f"Welcome back {st.session_state['name']}")
 st.caption("Scroll down to see all the interactives and downloadables graphics")
+
 
 ### Displaying the inventory
 with st.spinner('Connecting to Brian NextCloud...'):

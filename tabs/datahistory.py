@@ -52,11 +52,7 @@ def upload_to_github1(df, file_path_on_github, name, note, date):
             st.error(f"An error occurred while checking or updating the file: {e}")
 
 ### Page starts here ###
-with st.popover("Log In"):
-    st.markdown("Administrative credentials")
-    name = st.text_input("What's your name?",placeholder='John')
-
-if name in ['Brian','Kris','Jack']:
+if st.session_state["roles"] is not None and "Administrator" in st.session_state["roles"]:
 
     st.write(date)
 
@@ -81,5 +77,6 @@ if name in ['Brian','Kris','Jack']:
 
             else:
                 st.error('Add your name')
+
 else:
-    st.warning("Get access")
+    st.warning("Talk to an administrator to get access")
