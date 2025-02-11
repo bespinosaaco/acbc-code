@@ -138,7 +138,7 @@ if not st.session_state["authentication_status"]:
     login_tab,outh2_tab, regist_tab = st.tabs(["Login","Login with", "Sign Up"])
     with login_tab:
         try:
-            authenticator.login(single_session=True)
+            authenticator.login(single_session=False) #Had to set to false because there are issues when reload page
             save_config()
             handle_login_error()
         except Exception as e:
