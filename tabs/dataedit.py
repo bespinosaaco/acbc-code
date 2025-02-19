@@ -80,3 +80,5 @@ with st.form("new_data"):
                 st.error(f"Failed to upload file. Status code: {response.status_code}")
         else:
             st.error("The new sample dataframe is empty or no name set")
+
+
