@@ -9,28 +9,33 @@ NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
 USERNAME = st.secrets["nextcloud"]["username"]
 PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
 
+
 @st.cache_data
-def get_excel_file_as_dataframe(file_path,header=0, sheet_name=None):
+def get_excel_file_as_dataframe(file_path, header=0, sheet_name=None):
     url = f"{NEXTCLOUD_URL}{file_path}"
     try:
         response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
         if response.status_code == 200:
-            df = pd.read_excel(io.BytesIO(response.content), header=header, sheet_name=sheet_name,engine='openpyxl')
+            df = pd.read_excel(io.BytesIO(response.content), header=header, sheet_name=sheet_name, engine='openpyxl')
             return df
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to Load the master: {e}")
         return []
 
-biosourcekey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx',sheet_name='table1')
-instrumentkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx',sheet_name='table2')
-researcherkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx',sheet_name='table3')
+
+with st.status("Loading documentation..."):
+    biosourcekey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table1')
+    instrumentkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table2')
+    researcherkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table3')
+
+    st.success("Loaded!!!")
 
 # Here the page begins
 st.title("AC/BC 🦦")
 st.caption("Atlantic Canada Biochar Project")
-st.caption("Made by Brian Espinosa Acosta")
+st.caption("Made by Poduska'ss Lab")
 
-st.header("About US!",divider='green')
+st.header("About US!", divider='green')
 
 st.write('''
     Lorem ipsum dolor sit amet, consectetur adipiscing elit,
@@ -40,7 +45,7 @@ st.write('''
     Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
    ''')
 
-st.header("Data Management Tips",divider = "green")
+st.header("Data Management Tips", divider="green")
 st.write('''### Sample naming:''')
 st.caption('Follow this steps to name your sample')
 st.write('''Create a "unique sample name" every time that you produce or process a feedstock or
@@ -66,16 +71,15 @@ The sample feedstock source is **oak (hardwood)** and it was created using fast 
 Dr. **Poduska**.  
 Use the Sample Naming Keys 👇 to build the sample name.''')
 with st.expander("See Naming Keys"):
-    ckey1,ckey2 = st.columns((1,1))
+    ckey1, ckey2 = st.columns((1, 1))
     with ckey1:
-        st.dataframe(biosourcekey,hide_index=True, use_container_width=True)
+        st.dataframe(biosourcekey, hide_index=True, use_container_width=True)
     with ckey2:
-        st.dataframe(instrumentkey,hide_index=True, use_container_width=True)
-        st.dataframe(researcherkey,hide_index=True, use_container_width=True)
+        st.dataframe(instrumentkey, hide_index=True, use_container_width=True)
+        st.dataframe(researcherkey, hide_index=True, use_container_width=True)
 st.write('''Brian should name his sample: **BEA0002_HW400**  
 Then the data manager will add the project code and PI initial: **ACBCP**  
 The full sample reference code will be: **ACBCP_BEA0002_HW400**''')
-
 
 st.write('''
 ### Instrument file naming:  
@@ -110,7 +114,7 @@ st.write('''
 url1 = 'https://nextcloud.computecanada.ca/index.php/s/pwrdiEYzLXdKDbs'
 url2 = 'https://nextcloud.computecanada.ca/index.php/s/k9tZ3A96NdExC24'
 # Create the button
-col1,col2 = st.columns(2)
+col1, col2 = st.columns(2)
 with col1:
     st.markdown(f"""
         <a href="{url1}" target="_blank">
@@ -137,11 +141,11 @@ with col2:
 st.write('')
 st.write('')
 
-st.header("Learn About Biochars",divider='green')
+st.header("Learn About Biochars", divider='green')
 
 url3 = 'https://biochar-international.org/'
 url4 = 'https://biochar.ucdavis.edu/'
 url5 = 'https://biochar-us.org/index.php/'
 
-for i in [url3,url4,url5]:
+for i in [url3, url4, url5]:
     st.write(f'''* {i}''')

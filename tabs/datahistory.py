@@ -5,9 +5,9 @@ from datetime import date, datetime
 import io
 
 # GitHub configuration
-GITHUB_TOKEN = st.secrets['GitHub']['token']
-USERNAME = st.secrets['GitHub']['username']
-REPO_NAME = st.secrets['GitHub']['repo']
+# GITHUB_TOKEN = st.secrets['GitHub']['token']
+# USERNAME = st.secrets['GitHub']['username']
+# REPO_NAME = st.secrets['GitHub']['repo']
 FILE_PATH_ON_GITHUB = 'datalog/master.csv'
 date = datetime.today().strftime('%Y-%m-%d')
 

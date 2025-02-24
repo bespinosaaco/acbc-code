@@ -9,6 +9,7 @@ from streamlit_authenticator.utilities import (CredentialsError,
                                                RegisterError,
                                                ResetError,
                                                UpdateError)
+
 # Web appearance configuration
 st.set_page_config(page_title="AC/BC Visualize", page_icon='🧪',
                    layout="wide",
@@ -36,11 +37,13 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
+
 def handle_error(e, message):
     if isinstance(e, (LoginError, RegisterError, ResetError, UpdateError)):
         st.error(f"{message}: {str(e)}")
     else:
         st.error(f"An error occurred: {str(e)}")
+
 
 def handle_login_error():
     if st.session_state["authentication_status"] is None:
@@ -53,6 +56,7 @@ def handle_login_error():
             handle_forgotten_password()
             save_config()
 
+
 def handle_forgotten_username():
     try:
         username, email = authenticator.forgot_username()
@@ -63,6 +67,7 @@ def handle_forgotten_username():
             st.error('Email not found')
     except Exception as e:
         handle_error(e, "Error in retrieving username")
+
 
 def handle_forgotten_password():
     try:
@@ -79,9 +84,11 @@ def handle_forgotten_password():
     except Exception as e:
         handle_error(e, "Error in recovering password")
 
+
 def save_config():
     with open('.streamlit/config.yaml', 'w', encoding='utf-8') as file:
         yaml.dump(config, file, default_flow_style=False)
+
 
 def reset_password():
     try:
@@ -91,6 +98,7 @@ def reset_password():
     except Exception as e:
         handle_error(e, "Password reset failed")
 
+
 def update_details():
     try:
         if authenticator.update_user_details(st.session_state['username']):
@@ -98,6 +106,7 @@ def update_details():
             save_config()
     except Exception as e:
         st.error(e)
+
 
 def account_setting_page():
     """
@@ -111,20 +120,21 @@ def account_setting_page():
         reset_password()
         update_details()
 
+
 def app_ini():
     """Initiate the app navigation"""
 
     pages = {
         "Inventory": [
-            st.Page("tabs/dashboard.py", title="Dashboard",default=True),
+            st.Page("tabs/dashboard.py", title="Dashboard", default=True),
             st.Page("tabs/dataedit.py", title="Data Edit"),
         ],
-        "Data History" : [
+        "Data History": [
             st.Page("tabs/datahistory.py", title="Update"),
         ],
         "About": [
             st.Page("tabs/docs.py", title="Info"),
-            st.Page(account_setting_page,title="Account Settings"),
+            st.Page(account_setting_page, title="Account Settings"),
         ],
     }
 
@@ -135,10 +145,10 @@ def app_ini():
 # Login structure
 if not st.session_state["authentication_status"]:
     st.title("Welcome to AC/BC 🦦")
-    login_tab,outh2_tab, regist_tab = st.tabs(["Login","Login with", "Sign Up"])
+    login_tab, outh2_tab, regist_tab = st.tabs(["Login", "Login with", "Sign Up"])
     with login_tab:
         try:
-            authenticator.login(single_session=False) #Had to set to false because there are issues when reload page
+            authenticator.login(single_session=False)  # Had to set to false because there are issues when reload page
             save_config()
             handle_login_error()
         except Exception as e:
@@ -146,7 +156,7 @@ if not st.session_state["authentication_status"]:
 
     with outh2_tab:
         st.info("Still working on this ⚒️")
-        ggle_col,msft_col = st.columns(2)
+        ggle_col, msft_col = st.columns(2)
         with ggle_col:
             st.warning("The google button goes here")
         with msft_col:
@@ -171,7 +181,7 @@ if not st.session_state["authentication_status"]:
 
 # When logged in
 if st.session_state["authentication_status"]:
-    st.session_state['login_attempts'] = 0 # Re-initiate the login attempts
+    st.session_state['login_attempts'] = 0  # Re-initiate the login attempts
     with st.sidebar:
         authenticator.logout()
         save_config()

@@ -10,21 +10,23 @@ NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
 USERNAME = st.secrets["nextcloud"]["username"]
 PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
 
+
 ###### Function section begins here #######
 
 ### Function to get the master inventory spreadsheet
 @st.cache_data
-def get_csv_file_as_dataframe(file_path,header=0):
+def get_csv_file_as_dataframe(file_path, header=0):
     url = f"{NEXTCLOUD_URL}{file_path}"
     try:
         response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
         if response.status_code == 200:
             csv_content = response.content.decode('utf-8')
-            df = pd.read_csv(io.StringIO(csv_content),header=header)
+            df = pd.read_csv(io.StringIO(csv_content), header=header)
             return df
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to Load the master: {e}")
         return []
+
 
 ### Function to list files in the specified folder on NextCloud
 @st.cache_data
@@ -53,6 +55,7 @@ def list_nextcloud_folder_files(folder_path="/specific-folder"):
         st.error(f"Failed to list files: {e}")
         return []
 
+
 ### Function to plot 2D spectrums
 def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title="Y Axis"):
     """
@@ -68,8 +71,8 @@ def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title=
     - go.Figure: A Plotly figure object representing the line chart.
     """
     fig = go.Figure(data=go.Scatter(
-        x=data.iloc[:,0],
-        y=data.iloc[:,1],
+        x=data.iloc[:, 0],
+        y=data.iloc[:, 1],
         mode='lines',
         name='line',
         line=dict(color='blue', width=2)
@@ -88,27 +91,27 @@ def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title=
 
     return fig
 
+
 ###### The Dashboard begins here #######
 
 st.title("AC/BC Visualization 🦦")
 st.header(f"Welcome back {st.session_state['name']}")
 st.caption("Scroll down to see all the interactives and downloadables graphics")
 
-
-### Displaying the inventory
-with st.spinner('Connecting to Brian NextCloud...'):
+### Loading Inventory from Database
+with st.status('Connecting to NextCloud Database...'):
     if 'master' in st.session_state:
         master = st.session_state['master']
     else:
         master = get_csv_file_as_dataframe("/master.csv")
-        master.dropna(axis=0,how='all',inplace=True)
+        master.dropna(axis=0, how='all', inplace=True)
         st.session_state['master'] = master
 
     if 'UCD_Database' in st.session_state:
         UCD_Database = st.session_state['UCD_Database']
     else:
         UCD_Database = get_csv_file_as_dataframe("/UC_Davis_Biochar_Database.csv")
-        UCD_Database.dropna(axis=0,how='all',inplace=True)
+        UCD_Database.dropna(axis=0, how='all', inplace=True)
         st.session_state['UCD_Database'] = UCD_Database
 
     col_reload = st.columns([1, 0.1])
@@ -116,7 +119,7 @@ with st.spinner('Connecting to Brian NextCloud...'):
         st.write('Connected to Brian NextCloud')
     with col_reload[1]:
         with st.spinner('Reloading'):
-            if st.button('🔄️',key='file_refresh'):
+            if st.button('🔄️', key='file_refresh'):
                 get_csv_file_as_dataframe.clear()
                 master = get_csv_file_as_dataframe("/master.csv")
                 st.session_state['master'] = master
@@ -125,16 +128,17 @@ with st.spinner('Connecting to Brian NextCloud...'):
         #
         # st.write(f"Reload count: {st.session_state.get('reload_count', 0)}")
 
-    st.write('''
-    ### Master Biochar Inventory 📖
-    ''')
-    st.caption('This is the Biochar Inventory. You can sort, search, expand and download')
-    st.dataframe(master,use_container_width=True)
+### Displaying the inventory
+st.write('''
+### Master Biochar Inventory 📖
+''')
+st.caption('This is the Biochar Inventory. You can sort, search, expand and download')
+st.dataframe(master, use_container_width=True)
 
-    with st.expander("See the UC Davis Database"):
-        st.write("Visit UC Davis Database 👇")
-        st.link_button("UC Davis Database", "https://biochar.ucdavis.edu/")
-        st.dataframe(UCD_Database)
+with st.expander("See the UC Davis Database"):
+    st.write("Visit UC Davis Database 👇")
+    st.link_button("UC Davis Database", "https://biochar.ucdavis.edu/")
+    st.dataframe(UCD_Database)
 
 ### Pulling Data from the inventory
 with st.form("pull_data"):
@@ -152,7 +156,7 @@ with st.form("pull_data"):
                                                    'PoreVolume(cm3/g)', 'Density ', 'Hydrophobicity '],
                              help='Select one of the parameters',
                              placeholder='Parameter')
-    submitted =st.form_submit_button("Visualize")
+    submitted = st.form_submit_button("Visualize")
     st.markdown('''---''')
     if submitted:
         col1, col2, col3 = st.columns((2, 2, 4))
@@ -160,7 +164,7 @@ with st.form("pull_data"):
 
         ### Selected samples sortable dataframe
         with col1:
-            st.dataframe(master[['ShortName','LongName', param]][master['ShortName'].isin(choice)],
+            st.dataframe(master[['ShortName', 'LongName', param]][master['ShortName'].isin(choice)],
                          use_container_width=True)
         ### Selected parameter description
         with col2:
@@ -214,14 +218,14 @@ with st.container(border=False):
     ### Adsorption vs SSA vs $(O+N)/C$  
     ''')
 
-    ad_df = master.loc[:,['ShortName','LongName','Capacity(mmol/g)','BET(m2/g)']]
-    ad_df['(O+N)/C'] = ((master['%O']+master['%N'])/master['%C'])
-    ad_df.dropna(axis=0,subset=['Capacity(mmol/g)'],inplace=True)
+    ad_df = master.loc[:, ['ShortName', 'LongName', 'Capacity(mmol/g)', 'BET(m2/g)']]
+    ad_df['(O+N)/C'] = ((master['%O'] + master['%N']) / master['%C'])
+    ad_df.dropna(axis=0, subset=['Capacity(mmol/g)'], inplace=True)
 
-    labels = [(f"{ad_df.iloc[i,0]}: ({ad_df['Capacity(mmol/g)'].iloc[i]:.2f},"
+    labels = [(f"{ad_df.iloc[i, 0]}: ({ad_df['Capacity(mmol/g)'].iloc[i]:.2f},"
                f"{ad_df['BET(m2/g)'].iloc[i]:.2f},"
                f"{ad_df['(O+N)/C'].iloc[i]:.2f})") for i in range(len(ad_df))]
-    ads_col1,ads_col2 =st.columns((1,2))
+    ads_col1, ads_col2 = st.columns((1, 2))
     with ads_col1:
         st.dataframe(ad_df)
     with ads_col2:
@@ -271,10 +275,10 @@ st.write('''
     ''')
 with st.container(border=False):
     data_file_sel = None
-    inst_col1,inst_col2,inst_col3 = st.columns((1,1,0.1),vertical_alignment='bottom')
+    inst_col1, inst_col2, inst_col3 = st.columns((1, 1, 0.1), vertical_alignment='bottom')
     with inst_col1:
-        instrument_sel = st.selectbox(label= 'Select the instrument to display data',
-                                  options=["IR","TGA","RAMAN","XRD"], placeholder="Instrument")
+        instrument_sel = st.selectbox(label='Select the instrument to display data',
+                                      options=["IR", "TGA", "RAMAN", "XRD"], placeholder="Instrument")
     with inst_col2:
         if instrument_sel:
             istrmt_file_list = list_nextcloud_folder_files(f"/{instrument_sel}")
@@ -282,17 +286,16 @@ with st.container(border=False):
     with inst_col3:
         st.caption('Refresh')
         with st.spinner('Reloading'):
-            if st.button('🔄️',key='filelist_refresh',type= 'secondary',use_container_width=True):
+            if st.button('🔄️', key='filelist_refresh', type='secondary', use_container_width=True):
                 list_nextcloud_folder_files.clear()
 
     if st.button("Viz Spectrum"):
-        viz_file_col1,viz_file_col2 = st.columns([1,3])
+        viz_file_col1, viz_file_col2 = st.columns([1, 3])
         if data_file_sel is not None:
-            file_df = get_csv_file_as_dataframe(f"/{instrument_sel}/{data_file_sel}",header=None)
-            file_df.columns = ["X","Y"]
+            file_df = get_csv_file_as_dataframe(f"/{instrument_sel}/{data_file_sel}", header=None)
+            file_df.columns = ["X", "Y"]
             viz_file_col1.dataframe(file_df)
-            viz_file_col2.plotly_chart(plot_line_chart(file_df,data_file_sel[:-4],'Wavenumber',"Transmission"),use_container_width=True)
+            viz_file_col2.plotly_chart(plot_line_chart(file_df, data_file_sel[:-4], 'Wavenumber', "Transmission"),
+                                       use_container_width=True)
         else:
             st.warning("No data to pull")
-
-
