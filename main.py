@@ -127,10 +127,10 @@ def app_ini():
     pages = {
         "Inventory": [
             st.Page("tabs/dashboard.py", title="Dashboard", default=True),
-            st.Page("tabs/dataedit.py", title="Data Edit"),
         ],
-        "Data History": [
-            st.Page("tabs/datahistory.py", title="Update"),
+        "Data": [
+            st.Page("tabs/dataedit.py", title="Edit/Add"),
+            st.Page("tabs/datahistory.py", title="Update Database"),
         ],
         "About": [
             st.Page("tabs/docs.py", title="Info"),

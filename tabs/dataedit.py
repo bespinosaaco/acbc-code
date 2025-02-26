@@ -2,14 +2,18 @@ import streamlit as st
 import pandas as pd
 from datetime import date, datetime
 import requests
-from requests.auth import HTTPBasicAuth
 import io
 
-NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
-USERNAME = st.secrets["nextcloud"]["username"]
-PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
+
 time = datetime.today().strftime('%Y-%m-%d %H-%M')
-newsample_url = f"{NEXTCLOUD_URL}/NEWSAMPLES"
+
+# Repository details
+repo_url = st.secrets['forgejo']['repo_url']
+api_base = st.secrets['forgejo']['api_base']
+branch = "main"  # Adjust if the branch is different
+auth = (st.secrets['forgejo']['username'], st.secrets['forgejo']['password'])
+owner = st.secrets['forgejo']['owner']
+repo = st.secrets['forgejo']['repo']
 
 ### THE PAGE BEGINS HERE ###
 st.write(time)
@@ -22,28 +26,27 @@ if 'master' in st.session_state:
 else:
     st.error("Master Inventory hasn't been loaded")
 
-NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
-USERNAME = st.secrets["nextcloud"]["username"]
-PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
-
 
 @st.cache_data
 def get_excel_file_as_dataframe(file_path, header=0, sheet_name=None):
-    url = f"{NEXTCLOUD_URL}{file_path}"
+    raw_url = f"{repo_url}/raw/{branch}/{file_path}"
     try:
-        response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+        response = requests.get(raw_url, auth=auth)
         if response.status_code == 200:
             df = pd.read_excel(io.BytesIO(response.content), header=header, sheet_name=sheet_name, engine='openpyxl')
             return df
+        else:
+            st.error(f"Failed to fetch {file_path}. Status code: {response.status_code}")
+            return None
     except requests.exceptions.RequestException as e:
-        st.error(f"Failed to Load the master: {e}")
-        return []
+        st.error(f"Error: {e}")
+        return None
 
 
 with st.status("Loading keys cheatsheet..."):
-    biosourcekey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table1')
-    instrumentkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table2')
-    researcherkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table3')
+    biosourcekey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table1')
+    instrumentkey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table2')
+    researcherkey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table3')
 
     st.success("Loaded!!!")
 with st.expander("See Naming Keys"):
@@ -130,11 +133,11 @@ with st.form("new_data"):
             csv_buffer = io.StringIO()
             st.session_state.new_data_df2.to_csv(csv_buffer, index=False)
             csv_data = csv_buffer.getvalue()
-            upload_url = f'{newsample_url}/{researcher}-{time}.csv'
+            upload_url = f"{repo_url}/raw/{branch}/acbc_database/submitted_data/New-{researcher}-{time}.csv"
             response = requests.put(
                 upload_url,
                 data=csv_data,
-                auth=HTTPBasicAuth(USERNAME, PASSWORD)
+                auth=auth
             )
 
             # Check if the upload was successful
@@ -223,11 +226,11 @@ with st.form("edited_data"):
             csv_buffer = io.StringIO()
             st.session_state.edited_df.to_csv(csv_buffer, index=False)
             csv_data = csv_buffer.getvalue()
-            upload_url = f'{newsample_url}/Edited-{researcher}-{time}.csv'
+            upload_url = f"{repo_url}/raw/{branch}/acbc_database/submitted_data/Edited-{researcher}-{time}.csv"
             response = requests.put(
                 upload_url,
                 data=csv_data,
-                auth=HTTPBasicAuth(USERNAME, PASSWORD)
+                auth=auth
             )
 
             # Check if the upload was successful

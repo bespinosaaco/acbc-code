@@ -2,61 +2,70 @@ import streamlit as st
 import requests
 import pandas as pd
 import io
-from requests.auth import HTTPBasicAuth
 import plotly.graph_objects as go
 import xml.etree.ElementTree as ET
 
-NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
-USERNAME = st.secrets["nextcloud"]["username"]
-PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
+# Repository details
+repo_url = st.secrets['forgejo']['repo_url']
+api_base = st.secrets['forgejo']['api_base']
+branch = "main"  # Adjust if the branch is different
+auth = (st.secrets['forgejo']['username'], st.secrets['forgejo']['password'])
+owner = st.secrets['forgejo']['owner']
+repo = st.secrets['forgejo']['repo']
 
 
 ###### Function section begins here #######
 
-### Function to get the master inventory spreadsheet
 @st.cache_data
-def get_csv_file_as_dataframe(file_path, header=0):
-    url = f"{NEXTCLOUD_URL}{file_path}"
+def fetch_csv(file_path, header=0):
+    """
+    Function to fetch csv spreadsheets
+
+    Parameters:
+        -file_path(str): The path to the subfolder (e.g., 'master.csv').
+        -header(int or None): Indicate the index of the csv headers. Default = 0
+    Returns:
+        -pandas.dataframe: The csv file as a Pandas DataFrame
+    """
+    raw_url = f"{repo_url}/raw/{branch}/{file_path}"
     try:
-        response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+        response = requests.get(raw_url, auth=auth)
         if response.status_code == 200:
-            csv_content = response.content.decode('utf-8')
-            df = pd.read_csv(io.StringIO(csv_content), header=header)
-            return df
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to Load the master: {e}")
-        return []
+            return pd.read_csv(io.StringIO(response.content.decode('utf-8')), header=header)
+        else:
+            st.error(f"Failed to fetch {file_path}. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return None
 
 
-### Function to list files in the specified folder on NextCloud
 @st.cache_data
-def list_nextcloud_folder_files(folder_path="/specific-folder"):
-    url = f"{NEXTCLOUD_URL}{folder_path}/"
-    try:
-        response = requests.request("PROPFIND", url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
-        response.raise_for_status()  # Raise an error for bad responses
-        file_list = []
-        if response.status_code == 207:
-            # Parse XML response to get file and folder names
-            root = ET.fromstring(response.text)
-            namespace = {'d': 'DAV:'}
+def list_files(subfolder_path):
+    """
+    Lists all files in the specified subfolder of the Forgejo repository.
 
-            for response in root.findall("d:response", namespace):
-                href = response.find("d:href", namespace).text
-                if href.endswith('/'):
-                    folder_name = href.split('/')[-2]
-                    if folder_name != folder_path.strip('/'):
-                        file_list.append(folder_name)
-                else:
-                    file_name = href.split('/')[-1]
-                    file_list.append(file_name)
-        return file_list
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to list files: {e}")
+    Parameters:
+    - subfolder_path (str): The path to the subfolder (e.g., 'acbc_database').
+
+    Returns:
+    - list: A list of file paths (relative to the repository root) in the subfolder.
+    """
+    url = f"{api_base}/repos/{owner}/{repo}/contents/{subfolder_path}?ref={branch}"
+    try:
+        response = requests.get(url, auth=auth)
+        if response.status_code == 200:
+            contents = response.json()
+            # st.write(contents) #Uncomment to see the
+            return [item['name'] for item in contents if item['type'] == 'file']
+        else:
+            st.error(f"Failed to list files. Status code: {response.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"Error listing files: {e}")
         return []
 
 
-### Function to plot 2D spectrums
 def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title="Y Axis"):
     """
     Create a simple line chart using Plotly.
@@ -92,36 +101,36 @@ def plot_line_chart(data, title="Line Chart", xaxis_title="X Axis", yaxis_title=
     return fig
 
 
-###### The Dashboard begins here #######
+###### The Dashboard page begins here #######
 
 st.title("AC/BC Visualization 🦦")
 st.header(f"Welcome back {st.session_state['name']}")
 st.caption("Scroll down to see all the interactives and downloadables graphics")
 
 ### Loading Inventory from Database
-with st.status('Connecting to NextCloud Database...'):
+with st.status('Connecting to ACBC-REPO...'):
     if 'master' in st.session_state:
         master = st.session_state['master']
     else:
-        master = get_csv_file_as_dataframe("/master.csv")
+        master = fetch_csv("acbc_database/master.csv")
         master.dropna(axis=0, how='all', inplace=True)
         st.session_state['master'] = master
 
     if 'UCD_Database' in st.session_state:
         UCD_Database = st.session_state['UCD_Database']
     else:
-        UCD_Database = get_csv_file_as_dataframe("/UC_Davis_Biochar_Database.csv")
+        UCD_Database = fetch_csv("uc_davis_database/UC_Davis_Biochar_Database.csv")
         UCD_Database.dropna(axis=0, how='all', inplace=True)
         st.session_state['UCD_Database'] = UCD_Database
 
     col_reload = st.columns([1, 0.1])
     with col_reload[0]:
-        st.write('Connected to Brian NextCloud')
+        st.success('Connected to ACBC-REPO')
     with col_reload[1]:
         with st.spinner('Reloading'):
             if st.button('🔄️', key='file_refresh'):
-                get_csv_file_as_dataframe.clear()
-                master = get_csv_file_as_dataframe("/master.csv")
+                fetch_csv.clear()
+                master = fetch_csv("acbc_database/master.csv")
                 st.session_state['master'] = master
         # This is to check if the reload button is working
         #         st.session_state['reload_count'] = st.session_state.get('reload_count', 0) + 1
@@ -278,21 +287,21 @@ with st.container(border=False):
     inst_col1, inst_col2, inst_col3 = st.columns((1, 1, 0.1), vertical_alignment='bottom')
     with inst_col1:
         instrument_sel = st.selectbox(label='Select the instrument to display data',
-                                      options=["IR", "TGA", "RAMAN", "XRD"], placeholder="Instrument")
+                                      options=["infrared"], placeholder="Instrument")
     with inst_col2:
         if instrument_sel:
-            istrmt_file_list = list_nextcloud_folder_files(f"/{instrument_sel}")
+            istrmt_file_list = list_files(f"acbc_database/data/{instrument_sel}")
             data_file_sel = st.selectbox(label=f"List of available {instrument_sel}", options=istrmt_file_list)
     with inst_col3:
         st.caption('Refresh')
         with st.spinner('Reloading'):
             if st.button('🔄️', key='filelist_refresh', type='secondary', use_container_width=True):
-                list_nextcloud_folder_files.clear()
+                list_files.clear()
 
     if st.button("Viz Spectrum"):
         viz_file_col1, viz_file_col2 = st.columns([1, 3])
         if data_file_sel is not None:
-            file_df = get_csv_file_as_dataframe(f"/{instrument_sel}/{data_file_sel}", header=None)
+            file_df = fetch_csv(f"acbc_database/data/{instrument_sel}/{data_file_sel}", header=None)
             file_df.columns = ["X", "Y"]
             viz_file_col1.dataframe(file_df)
             viz_file_col2.plotly_chart(plot_line_chart(file_df, data_file_sel[:-4], 'Wavenumber', "Transmission"),
