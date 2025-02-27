@@ -287,7 +287,7 @@ with st.container(border=False):
     inst_col1, inst_col2, inst_col3 = st.columns((1, 1, 0.1), vertical_alignment='bottom')
     with inst_col1:
         instrument_sel = st.selectbox(label='Select the instrument to display data',
-                                      options=["infrared"], placeholder="Instrument")
+                                      options=["infrared","x-ray"], placeholder="Instrument")
     with inst_col2:
         if instrument_sel:
             istrmt_file_list = list_files(f"acbc_database/data/{instrument_sel}")
