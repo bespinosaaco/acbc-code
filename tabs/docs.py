@@ -3,30 +3,48 @@ from streamlit import divider, caption
 import requests
 import pandas as pd
 import io
-from requests.auth import HTTPBasicAuth
 
-NEXTCLOUD_URL = st.secrets["nextcloud"]["NEXTCLOUD_URL"]
-USERNAME = st.secrets["nextcloud"]["username"]
-PASSWORD = st.secrets["nextcloud"]["next_cloudpass"]
-
+# Repository details
+repo_url = st.secrets['forgejo']['repo_url']
+api_base = st.secrets['forgejo']['api_base']
+branch = "main"  # Adjust if the branch is different
+auth = (st.secrets['forgejo']['username'], st.secrets['forgejo']['password'])
+owner = st.secrets['forgejo']['owner']
+repo = st.secrets['forgejo']['repo']
 
 @st.cache_data
-def get_excel_file_as_dataframe(file_path, header=0, sheet_name=None):
-    url = f"{NEXTCLOUD_URL}{file_path}"
+def get_json_file(file_path):
+    """
+    Fetch a JSON file from a Forgejo repository and return its data.
+
+    Parameters:
+    - file_path (str): Path to the JSON file in the repository.
+
+    Returns:
+    - dict: Dictionary of DataFrames.
+    - None: If the fetch fails or the section is not found.
+    """
+    raw_url = f"{repo_url}/raw/{branch}/{file_path}"
     try:
-        response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+        response = requests.get(raw_url, auth=auth)
         if response.status_code == 200:
-            df = pd.read_excel(io.BytesIO(response.content), header=header, sheet_name=sheet_name, engine='openpyxl')
-            return df
+            data = response.json()  # Parse JSON directly into a Python object
+            # Return a dictionary of DataFrames
+            dataframes = {}
+            for key, value in data.items():
+                df = pd.DataFrame(list(value.items()), columns=["Key", "Description"])
+                dataframes[key] = df
+            return dataframes
+        else:
+            st.error(f"Failed to fetch {file_path}. Status code: {response.status_code}")
+            return None
     except requests.exceptions.RequestException as e:
-        st.error(f"Failed to Load the master: {e}")
-        return []
+        st.error(f"Error: {e}")
+        return None
 
 
 with st.status("Loading documentation..."):
-    biosourcekey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table1')
-    instrumentkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table2')
-    researcherkey = get_excel_file_as_dataframe('/DOCUMENTATION/naming_key.xlsx', sheet_name='table3')
+    naming_keys = get_json_file('acbc_database/documentation/naming_key.json')
 
     st.success("Loaded!!!")
 
@@ -73,10 +91,10 @@ Use the Sample Naming Keys 👇 to build the sample name.''')
 with st.expander("See Naming Keys"):
     ckey1, ckey2 = st.columns((1, 1))
     with ckey1:
-        st.dataframe(biosourcekey, hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['feedstock'], hide_index=True, use_container_width=True)
     with ckey2:
-        st.dataframe(instrumentkey, hide_index=True, use_container_width=True)
-        st.dataframe(researcherkey, hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['instrument'], hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['researcher_initials'], hide_index=True, use_container_width=True)
 st.write('''Brian should name his sample: **BEA0002_HW400**  
 Then the data manager will add the project code and PI initial: **ACBCP**  
 The full sample reference code will be: **ACBCP_BEA0002_HW400**''')

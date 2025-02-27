@@ -4,8 +4,12 @@ import os
 import subprocess
 from datetime import datetime
 
+st.warning("Repare the commit functions to Forgejo repository")
+
 date = datetime.today().strftime('%Y-%m-%d')
 directory = 'datalog'
+
+
 
 # Helper functions
 def is_repo_initialized():

@@ -4,7 +4,6 @@ from datetime import date, datetime
 import requests
 import io
 
-
 time = datetime.today().strftime('%Y-%m-%d %H-%M')
 
 # Repository details
@@ -15,7 +14,41 @@ auth = (st.secrets['forgejo']['username'], st.secrets['forgejo']['password'])
 owner = st.secrets['forgejo']['owner']
 repo = st.secrets['forgejo']['repo']
 
+
+@st.cache_data
+def get_json_file(file_path):
+    """
+    Fetch a JSON file from a Forgejo repository and return its data.
+
+    Parameters:
+    - file_path (str): Path to the JSON file in the repository.
+
+    Returns:
+    - dict: Dictionary of DataFrames.
+    - None: If the fetch fails or the section is not found.
+    """
+    raw_url = f"{repo_url}/raw/{branch}/{file_path}"
+    try:
+        response = requests.get(raw_url, auth=auth)
+        if response.status_code == 200:
+            data = response.json()  # Parse JSON directly into a Python object
+            # Return a dictionary of DataFrames
+            dataframes = {}
+            for key, value in data.items():
+                df = pd.DataFrame(list(value.items()), columns=["Key", "Description"])
+                dataframes[key] = df
+            return dataframes
+        else:
+            st.error(f"Failed to fetch {file_path}. Status code: {response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error: {e}")
+        return None
+
+
 ### THE PAGE BEGINS HERE ###
+
+st.warning("Repare the commit functions to Forgejo repository")
 st.write(time)
 
 st.caption("Add your sample information dynamically")
@@ -26,36 +59,16 @@ if 'master' in st.session_state:
 else:
     st.error("Master Inventory hasn't been loaded")
 
-
-@st.cache_data
-def get_excel_file_as_dataframe(file_path, header=0, sheet_name=None):
-    raw_url = f"{repo_url}/raw/{branch}/{file_path}"
-    try:
-        response = requests.get(raw_url, auth=auth)
-        if response.status_code == 200:
-            df = pd.read_excel(io.BytesIO(response.content), header=header, sheet_name=sheet_name, engine='openpyxl')
-            return df
-        else:
-            st.error(f"Failed to fetch {file_path}. Status code: {response.status_code}")
-            return None
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error: {e}")
-        return None
-
-
 with st.status("Loading keys cheatsheet..."):
-    biosourcekey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table1')
-    instrumentkey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table2')
-    researcherkey = get_excel_file_as_dataframe('acbc_database/documentation/naming_key.xlsx', sheet_name='table3')
-
+    naming_keys = get_json_file('acbc_database/documentation/naming_key.json')
     st.success("Loaded!!!")
 with st.expander("See Naming Keys"):
     ckey1, ckey2 = st.columns((1, 1))
     with ckey1:
-        st.dataframe(biosourcekey, hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['feedstock'], hide_index=True, use_container_width=True)
     with ckey2:
-        st.dataframe(instrumentkey, hide_index=True, use_container_width=True)
-        st.dataframe(researcherkey, hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['instrument'], hide_index=True, use_container_width=True)
+        st.dataframe(naming_keys['researcher_initials'], hide_index=True, use_container_width=True)
 
 ### SUBMITTING NEW SAMPLES WITH A FORM ###
 
@@ -148,12 +161,13 @@ with st.form("new_data"):
         else:
             st.error("The new sample dataframe is empty or no name set")
 
+# Editing existing samples
 st.header("Edit Current Data", divider='green')
 
 samples_to_edit = st.multiselect(label='Select what samples you want to edit', options=master['ShortName'],
                                  max_selections=5, help="Only 5 at a time")
 
-st.session_state.edited_df = st.data_editor(master[master['ShortName'].isin(samples_to_edit)], num_rows='dynamic',
+st.session_state.edited_df = st.data_editor(master[master['ShortName'].isin(samples_to_edit)], num_rows='fixed',
                                             hide_index=True,
                                             column_config={
                                                 "ProjectCode": st.column_config.TextColumn(disabled=True,
@@ -215,7 +229,7 @@ st.session_state.edited_df = st.data_editor(master[master['ShortName'].isin(samp
 
 with st.form("edited_data"):
     st.write("Inspect the dataframe you have just edited")
-    st.write(st.session_state.edited_df)
+    st.dataframe(st.session_state.edited_df, hide_index=True)
     researcher = st.session_state['name']
     st.info(f"{st.session_state['name']} will upload for review the above edited dataframe after hitting submit.")
     submitted = st.form_submit_button("Submit for review")
