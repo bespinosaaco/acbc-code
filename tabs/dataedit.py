@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import date, datetime
 import requests
 import io
+import base64
 
 time = datetime.today().strftime('%Y-%m-%d %H-%M')
 
@@ -44,6 +45,57 @@ def get_json_file(file_path):
     except requests.exceptions.RequestException as e:
         st.error(f"Error: {e}")
         return None
+
+
+def commit_to_repo(df, file_path, commit_message=None):
+    csv_data = df.to_csv(index=False)
+    content = base64.b64encode(csv_data.encode()).decode()
+    url = f"{api_base}/repos/{owner}/{repo}/contents/{file_path}"
+    # Check if file exists
+    response = requests.get(url, params={"ref": branch}, auth=auth)
+    sha = None
+    st.write(response)
+    if response.status_code == 200:
+        sha = response.json().get("sha")
+        st.write(sha)
+    elif response.status_code != 404:
+        return False, f"Error checking file existence: {response.text}"
+
+    # Prepare payload
+    if commit_message is None:
+        commit_message = f"Add or update {file_path} from Streamlit app"
+    payload = {
+        "message": commit_message,
+        "content": content,
+        "branch": branch
+    }
+    if sha:
+        payload["sha"] = sha
+
+    # Make PUT request
+    response = requests.put(url, json=payload, auth=auth)
+
+    # Check response
+    if response.status_code in (200, 201):
+        return True, "File committed successfully"
+    else:
+        return False, f"Failed to commit: {response.text}"
+
+
+def post_to_repo(df, file_path, commit_message=None):
+    csv_data = df.to_csv(index=False)
+    content = base64.b64encode(csv_data.encode()).decode()
+    url = f"{api_base}/repos/{owner}/{repo}/contents/{file_path}"
+    payload = {
+        "message": commit_message,
+        "content": content,
+        "branch": branch
+    }
+    response = requests.post(url, json=payload, auth=auth)
+    if response.status_code in (200, 201):
+        st.success("New data submitted for review")
+    else:
+        st.error(f"Failed to commit: {response.text}")
 
 
 ### THE PAGE BEGINS HERE ###
@@ -142,22 +194,12 @@ with st.form("new_data"):
 
     if submitted:
         if researcher is not None and not st.session_state.new_data_df2.empty:
-            # Convert DataFrame to CSV in memory
-            csv_buffer = io.StringIO()
-            st.session_state.new_data_df2.to_csv(csv_buffer, index=False)
-            csv_data = csv_buffer.getvalue()
-            upload_url = f"{repo_url}/raw/{branch}/acbc_database/submitted_data/New-{researcher}-{time}.csv"
-            response = requests.put(
-                upload_url,
-                data=csv_data,
-                auth=auth
+            commit_message = f"Data submitted by {researcher} at {time}"
+            post_to_repo(
+                st.session_state.new_data_df2,
+                f"acbc_database/submitted_data/NewData-{researcher}-{time}.csv",
+                commit_message
             )
-
-            # Check if the upload was successful
-            if response.status_code == 201:
-                st.success("Submitted for review")
-            else:
-                st.error(f"Failed to upload file. Status code: {response.status_code}")
         else:
             st.error("The new sample dataframe is empty or no name set")
 
@@ -232,25 +274,15 @@ with st.form("edited_data"):
     st.dataframe(st.session_state.edited_df, hide_index=True)
     researcher = st.session_state['name']
     st.info(f"{st.session_state['name']} will upload for review the above edited dataframe after hitting submit.")
+    commit_message1 = st.text_input("Why are you edditing this data?",
+                                    value=f"Editted by {researcher} at {time}", max_chars=140)
     submitted = st.form_submit_button("Submit for review")
-
     if submitted:
         if not st.session_state.edited_df.equals(master[master['ShortName'].isin(samples_to_edit)]):
-            # Convert DataFrame to CSV in memory
-            csv_buffer = io.StringIO()
-            st.session_state.edited_df.to_csv(csv_buffer, index=False)
-            csv_data = csv_buffer.getvalue()
-            upload_url = f"{repo_url}/raw/{branch}/acbc_database/submitted_data/Edited-{researcher}-{time}.csv"
-            response = requests.put(
-                upload_url,
-                data=csv_data,
-                auth=auth
+            post_to_repo(
+                st.session_state.edited_df,
+                f"acbc_database/submitted_data/DataEdited-{researcher}-{time}.csv",
+                commit_message1
             )
-
-            # Check if the upload was successful
-            if response.status_code == 201:
-                st.success("Submitted for review")
-            else:
-                st.error(f"Failed to upload file. Status code: {response.status_code}")
         else:
             st.error("No changes have been detected")

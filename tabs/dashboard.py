@@ -40,7 +40,6 @@ def fetch_csv(file_path, header=0):
         return None
 
 
-@st.cache_data
 def list_files(subfolder_path):
     """
     Lists all files in the specified subfolder of the Forgejo repository.
